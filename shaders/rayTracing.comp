@@ -3,7 +3,7 @@
 layout(local_size_x = 8, local_size_y = 8, local_size_z) in;
 
 // Write the outbounding colors associated with ray tracing
-writeonly layout(rgba8, bind = 0) uniform image2D ping_in;
+// writeonly layout(rgba8, bind = 0) uniform image2D ping_in;
 
 // shared int sharedData;
 

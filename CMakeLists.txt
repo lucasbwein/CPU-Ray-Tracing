@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(OpenGL_Ray)
+project(ray_tracer)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -14,16 +14,29 @@ add_library(glad external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
 
 # ---- Your executable ----
-add_executable(OpenGL_Ray
+add_executable(ray_tracer
     src/main.cpp
+    src/MetalRenderer.mm
 )
 
-target_include_directories(OpenGL_Ray PRIVATE external/include)
+target_include_directories(ray_tracer PRIVATE 
+    external/include
+    src
+)
 
-target_link_libraries(OpenGL_Ray PRIVATE
+target_link_libraries(ray_tracer PRIVATE
     glad
     glfw
     OpenGL::GL
     assimp::assimp
+    "-framework Metal"
+    "-framework Foundation"
+    "-framework Cocoa"
+    "-framework IOKit"
 )
 
+set_source_files_properties(
+    src/MetalRenderer.mm
+    PROPERTIES
+    COMPILE_FLAGS "-x objective-c++"
+)
