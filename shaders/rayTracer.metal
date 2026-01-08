@@ -40,6 +40,8 @@ constant int NUM_SPHERES = 3;
 
 /* ===================================
 TODO:
+- Implement other object (cubes, pyramids)
+
 Reflection Formula = I - 2 * dot(I, N) * N
 
 Incident ray direction: I (ray hitting surface)
@@ -62,7 +64,7 @@ kernel void rayTrace(
 {
     // Define Sphere and Light
     Sphere spheres[NUM_SPHERES] = {
-        {{0.0, 0.0, -5.0}, 1.0, {1.0, 0.0, 0.0}},       // Red Sphere
+        {{0.0, 0.0, -5.0}, 1.0, {0.7, 0.4, 0.7}},       // Red Sphere
         {{2.2, 0.0, -5.0}, 1.0, {0.0, 1.0, 0.0}},       // Green Sphere
         {{0.0, -101.5, -5.0}, 100.0, {0.5, 0.5, 0.5}}   // Ground (gray)
     };

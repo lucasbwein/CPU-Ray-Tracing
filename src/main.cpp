@@ -40,7 +40,31 @@ bool useDebugCam = false;
 bool uiMode = false;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    glViewport(0, 0, width, height);
+    // glViewport(0, 0, width, height);
+
+    // Avoids dividing by zero
+    if (width <= 0 || height <= 0) return;
+
+    float baseAspect = (float)SCR_WIDTH / (float)SCR_HEIGHT;
+    float windowAspect  = (float)width  / (float)height;
+
+    int viewpX = 0, viewpY = 0, viewpW = width, viewpH = height;
+
+    if (windowAspect > baseAspect) {
+    // Window is wider than base cause pillarbox (bars left/right)
+        viewpH = height;
+        viewpW = (int)(height * baseAspect);
+        viewpX = (width - viewpW) / 2;
+        viewpY = 0;
+    } else {
+    // Window is taller than base cause letterbox (bars top/bottom)
+        viewpW = width;
+        viewpH = (int)(width / baseAspect);
+        viewpX = 0;
+        viewpY = (height - viewpH) / 2;
+    }
+
+    glViewport(viewpX, viewpY, viewpW, viewpH);
 }
 
 void processInput(GLFWwindow *window, Camera& camera, float deltaTime){

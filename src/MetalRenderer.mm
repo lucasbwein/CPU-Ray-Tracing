@@ -57,10 +57,8 @@ void MetalRenderer::init(int w, int h) {
         NSLog(@"Current directory: %@", [[NSFileManager defaultManager] currentDirectoryPath]);
         return;
     }
-    NSLog(@"\nShader Source Success");
+    // NSLog(@"\nShader Source Success");
 
-    // MTLCompileOptions *options = [[MTLCompileOptions alloc]init];
-    // options.additionalCompilerArguments = @[@"-I", @"/Users/lucasweinstein/Projects/Personal/OpenGl_Ray_Tracing/src"];
     // b) compile shader into library
     id<MTLLibrary> library = [deviceObj newLibraryWithSource:shaderSource
                             options:nil
@@ -68,7 +66,7 @@ void MetalRenderer::init(int w, int h) {
     if(!library) {
         NSLog(@"Library Failed: %@", error);
     }
-    NSLog(@"\nLibrary Success");
+    // NSLog(@"\nLibrary Success");
 
     // Create compute pipeline
     // a) Get kernel function from library
@@ -76,7 +74,7 @@ void MetalRenderer::init(int w, int h) {
     if(!kernelFunction) {
         NSLog(@"Kernel Failed: %@", error);
     }
-    NSLog(@"\nKernel Success");
+    // NSLog(@"\nKernel Success");
 
     // b) Create pipeline state
     id<MTLComputePipelineState> computePipe = [deviceObj 

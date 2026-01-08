@@ -12,3 +12,7 @@ Went from a simplistic implementation of ray tracing on the CPU. Works by comput
 
 (OLD) Plan to move to Metal to use a compute shader for calculating ray tracing. 
 Note: Currently due to optimization runs at 3 FPS on modern computer.
+
+## Reference
+Ray Tracing: https://en.wikipedia.org/wiki/Ray_tracing_(graphics)
+Book of Shaders: https://thebookofshaders.com
