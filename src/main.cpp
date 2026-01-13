@@ -121,7 +121,6 @@ void processInput(GLFWwindow *window, Camera& camera, float deltaTime){
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     if(uiMode) return;
-    // camera.ProcessMouseScroll((float)yoffset);
     Camera &cam = useDebugCam ? debugCam : camera;
     cam.ProcessMouseScroll((float)yoffset);
 }
@@ -161,7 +160,7 @@ int main() {
 #endif
 // --------------------------
     // Create a windowed mode window and its OpenGL context
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Ray Tracer", nullptr, nullptr);
     if (!window) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();

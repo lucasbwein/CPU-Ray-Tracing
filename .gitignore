@@ -6,3 +6,6 @@
 
 # build file
 /build/
+
+# Other
+/src/OLD main CPU.cpp

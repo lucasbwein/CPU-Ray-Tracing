@@ -12,6 +12,8 @@ struct Sphere {
     float3 center;
     float radius;
     float3 color;
+    float reflectivity;
+    // float shininess; // for specular
 };
 struct Light {
     float3 position;
@@ -36,24 +38,33 @@ struct Hit {
     float3 color;
     float reflectivity;
 };
-constant int NUM_SPHERES = 3;
+constant int NUM_SPHERES = 5;
+constant int SAMPLES_PER = 4;
 
 /* ===================================
 TODO:
+
+ADD:
+- snell's law (Refraction/Transparency)
+- Specular lighting 
 - Implement other object (cubes, pyramids)
+- Textures (Normal Map)
+- Path Tracing (for Global Illumination)
+- Denoising
 
-Reflection Formula = I - 2 * dot(I, N) * N
+Optimizations
+- Look into BVH (Bounding Volume Hierarchy)
+- Spatial Partitioning
 
-Incident ray direction: I (ray hitting surface)
-Surface normal: N (perpendicular to surface)
+Later On (More Advance):
+- Anti-Alisasing
+- Soft Shadows
+- Depth of Field
 
-When light bounces:
-- Some energy is absorbed by the material (becomes heat)
-- Some energy is reflected (continues as light)
-- Light gets tinted by the surface color
+=================================== */
 
-Ray generateRay(uint2 gid, constant GPUCamera* cam, uint2 gridSize);
-float3 traceRay(Ray ray, thread Sphere* spheres, Light light);
+Ray generateRay(uint2 gid, float2 offset, constant GPUCamera* cam, uint2 gridSize);
+float3 traceRay(Ray ray, thread Sphere* spheres, Light light, float3 camPos);
 bool intersectSphere(Ray ray, Sphere sphere, float tMin, float tMax, thread Hit& hit);
 
 kernel void rayTrace(
@@ -64,9 +75,12 @@ kernel void rayTrace(
 {
     // Define Sphere and Light
     Sphere spheres[NUM_SPHERES] = {
-        {{0.0, 0.0, -5.0}, 1.0, {0.7, 0.4, 0.7}},       // Red Sphere
-        {{2.2, 0.0, -5.0}, 1.0, {0.0, 1.0, 0.0}},       // Green Sphere
-        {{0.0, -101.5, -5.0}, 100.0, {0.5, 0.5, 0.5}}   // Ground (gray)
+        {{6.0, 5.5, 0.0}, 0.1, {1.0, 1.0, 1.0}, 0.0}, // Small sphere above light
+        // {{0.0, 0.0, -5.0}, 1.0, {0.7, 0.4, 0.7}, 0.2},       // Magenta Sphere
+        {{0.0, 0.0, -5.0}, 1.0, {1.0, 0.0, 0.0}, 0.0},       // Magenta Sphere
+        {{2.2, 0.0, -5.0}, 1.0, {0.0, 1.0, 0.0}, 0.8},       // Green Sphere
+         {{4.5, 0.0, -5.0}, 1.0, {0.9, 0.9, 0.9}, 0.95},   // Silver
+        {{0.0, -101.5, -5.0}, 100.0, {0.5, 0.5, 0.5}, 0.3}   // Ground (gray)
     };
     Light light = {{5.0, 5.0, 0.0}, {1.0, 1.0, 1.0}};
 
@@ -75,21 +89,33 @@ kernel void rayTrace(
 
     // gid.x = x && gid.y = y
 
-    Ray ray = generateRay(gid, camera, gridSize);
+    float2 offsets[4] = { // can generalize this by making it based of size and step
+        {-0.25, -0.25},  // Top-left
+        {0.25, -0.25},  // Top-right  
+        {-0.25, 0.25},  // Bottom-left
+        {0.25, 0.25}    // Bottom-right
+    };
 
-    float3 color = traceRay(ray, spheres, light);
+    float3 finalColor = float3(0.0);
+    for (int sample = 0; sample < SAMPLES_PER; sample++) { // Generates basic Anti-Alisasing
+        Ray ray = generateRay(gid, offsets[sample], camera, gridSize);
+        float3 color = traceRay(ray, spheres, light, camera->position.xyz);
 
+        finalColor += color;
+    }
+
+    finalColor /= float(SAMPLES_PER);
     // float3 color = ray.direction * 0.5 + 0.5;
     // float3 color = float3(camera->fov, camera->fov, camera->fov);
 
-    output.write(float4(color, 1.0), gid);
+    output.write(float4(finalColor, 1.0), gid);
 }
 
-Ray generateRay(uint2 gid, constant GPUCamera* cam, uint2 gridSize) {
+Ray generateRay(uint2 gid, float2 offset, constant GPUCamera* cam, uint2 gridSize) {
     Ray genRay;
     // Normalized pixel coordinates to [-1, 1]
-    float u = 2.0 * (gid.x + 0.5) / float(gridSize.x) - 1;
-    float v = 2.0 * (gid.y + 0.5) / float(gridSize.y) - 1;
+    float u = 2.0 * (float(gid.x) + 0.5  + offset.x) / float(gridSize.x) - 1;
+    float v = 2.0 * (float(gid.y) + 0.5 + offset.y) / float(gridSize.y) - 1;
 
     // Calculate scale FOV
     float scale = tan(cam->fov * 0.5f);
@@ -105,41 +131,78 @@ Ray generateRay(uint2 gid, constant GPUCamera* cam, uint2 gridSize) {
     return genRay;
 }
 
-float3 traceRay(Ray ray, thread Sphere* spheres, Light light) {
-    Hit hit;
-    float tMin = 0.001f;
-    float tMax = 9999.9f;
+float3 traceRay(Ray primaryRay, thread Sphere* spheres, Light light, float3 camPos) {
+    float3 finalColor = float3(0.0);
+    float3 throughPut = float3(1.0);
+    Ray currentRay = primaryRay;
 
-    for (int i=0; i < NUM_SPHERES; i++){
-    //sphere[i].intersect(ray, tMin, tMax, hit)
-        if(intersectSphere(ray, spheres[i], tMin, tMax, hit)) {
-            tMax = hit.t;
-        }
-    }
+    int maxBounces = 4;
 
-    if(hit.hit) {
-        float3 lightDir = normalize(light.position - hit.point);
-        float diffuse = max(dot(hit.normal, lightDir), 0.0f);
-
-        Ray shadowRay;
-        shadowRay.direction = lightDir;
-        shadowRay.origin = hit.point;
-
-        float dist_to_light = distance(hit.point, light.position);
-
-        Hit shadowHit;
-        for(int i=0; i < NUM_SPHERES; i++) {
-            // if(sphere.matID == hit.matID) continue;
-            if(intersectSphere(shadowRay, spheres[i], tMin, dist_to_light, shadowHit)){
-                diffuse *= 0.2;
-                break;
+    for(int bounce=0; bounce < maxBounces; bounce++){
+        Hit hit;
+        float tMin = 0.001f; // Removes too close
+        float tMax = 9999.9f;
+            
+        // Calculates intersect
+        for (int i=0; i < NUM_SPHERES; i++){
+            if(intersectSphere(currentRay, spheres[i], tMin, tMax, hit)) {
+                tMax = hit.t;
             }
         }
-        return hit.color * diffuse;
-    } else {
-        float a = 0.5f * (normalize(ray.direction).y + 1.0f);
-        return (1.0f - a) * float3(1.0f) + a * float3(0.5f, 0.7f, 1.0f);
+
+        // if ray hits calculates shadow and returns color
+        if(hit.hit) {
+            float3 lightDir = normalize(light.position - hit.point);
+            float diffuse = max(dot(hit.normal, lightDir), 0.0f);
+
+            float3 viewDir = normalize(camPos - hit.point);
+            float3 reflectDir = reflect(-lightDir, hit.normal);
+            float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+
+            // float ior = 1.5; // (Index of refraction)
+            // float3 refracted = refract(currentRay.direction, hit.normal, 1.0 / ior);
+
+            // Shadow Test
+            Ray shadowRay;
+            shadowRay.direction = lightDir;
+            shadowRay.origin = hit.point;
+            float dist_to_light = distance(hit.point, light.position);
+            
+            Hit shadowHit;
+            for(int i=0; i < NUM_SPHERES; i++) {
+                // if(sphere.matID == hit.matID) continue;
+                if(intersectSphere(shadowRay, spheres[i], tMin, dist_to_light, shadowHit)){
+                    diffuse *= 0.2;
+                    break;
+                }
+            }
+            
+            float3 directLight = hit.color * diffuse * light.color + float3(1.0) * spec * 0.2;
+            // float3 directLight = hit.color * diffuse * light.color;
+            finalColor += throughPut * directLight;
+
+            if (hit.reflectivity < 0.001) {
+                break;
+            }
+
+            throughPut *= hit.color * hit.reflectivity;
+
+            if (length(throughPut) < 0.001) {
+                break;
+            }
+
+            // Create Reflected Ray
+            currentRay.origin = hit.point;
+            currentRay.direction = reflect(currentRay.direction, hit.normal);
+        } else {
+            // Hit Sky and Stops
+            float a = 0.5f * (normalize(currentRay.direction).y + 1.0f);
+            float3 skyColor = (1.0f - a) * float3(1.0f) + a * float3(0.5f, 0.7f, 1.0f);
+            finalColor += skyColor * throughPut;
+            break; // stops bouncing
+        }
     }
+    return finalColor;
 }
 
 bool intersectSphere(Ray ray, Sphere sphere, float tMin, float tMax, thread Hit& hit) {
@@ -185,6 +248,7 @@ bool intersectSphere(Ray ray, Sphere sphere, float tMin, float tMax, thread Hit&
     // hit.matID = matID;
     hit.hit = true;
     hit.color = sphere.color;
+    hit.reflectivity = sphere.reflectivity;
     
     return true;
 }
