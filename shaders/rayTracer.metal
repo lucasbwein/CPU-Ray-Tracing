@@ -48,7 +48,7 @@ ADD:
 - snell's law (Refraction/Transparency)
 - Specular lighting 
 - Implement other object (cubes, pyramids)
-- Textures (Normal Map)
+- Textures (Normal Map)**
 - Path Tracing (for Global Illumination)
 - Denoising
 
@@ -78,7 +78,7 @@ kernel void rayTrace(
         {{6.0, 5.5, 0.0}, 0.1, {1.0, 1.0, 1.0}, 0.0}, // Small sphere above light
         // {{0.0, 0.0, -5.0}, 1.0, {0.7, 0.4, 0.7}, 0.2},       // Magenta Sphere
         {{0.0, 0.0, -5.0}, 1.0, {1.0, 0.0, 0.0}, 0.0},       // Magenta Sphere
-        {{2.2, 0.0, -5.0}, 1.0, {0.0, 1.0, 0.0}, 0.8},       // Green Sphere
+        {{2.2, 1.0, -6.0}, 1.0, {0.0, 1.0, 0.0}, 0.8},       // Green Sphere
          {{4.5, 0.0, -5.0}, 1.0, {0.9, 0.9, 0.9}, 0.95},   // Silver
         {{0.0, -101.5, -5.0}, 100.0, {0.5, 0.5, 0.5}, 0.3}   // Ground (gray)
     };
@@ -252,3 +252,5 @@ bool intersectSphere(Ray ray, Sphere sphere, float tMin, float tMax, thread Hit&
     
     return true;
 }
+
+// bool intersectPlane(Ray ray, Plane plane, float tMin, float tMax, thread Hit& hit) 

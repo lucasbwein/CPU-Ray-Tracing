@@ -53,10 +53,10 @@ public:
         Position += Right * Speed * deltaTime;
     }
     void ProcessKeyboardUp(float deltaTime) {
-        Position += Up * Speed * deltaTime;
+        Position.y += Speed * deltaTime;
     }
     void ProcessKeyboardDown(float deltaTime) {
-        Position -= Up * Speed * deltaTime;
+        Position.y -= Speed * deltaTime;
     }
 
     void ProcessMouseMovement(float xoffset, float yoffset)
